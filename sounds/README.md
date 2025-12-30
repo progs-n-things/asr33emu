@@ -1,6 +1,7 @@
 # Sounds of the Teletype
 
-Recorded with a Zoom H3-VR microphone.
+Recorded by Hugh Pyle with a Zoom H3-VR microphone
+Reused from his ttyemu project: https://github.com/hughpyle/ttyemu
 
 ## License
 
