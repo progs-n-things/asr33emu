@@ -65,8 +65,6 @@ class PapertapeReader():
             "skip_leading_nulls",
             default=READER_AUTO_SKIP_LEADING_NULLS
         )
-        self.set_visible = config.get("visible", default=False)
-        self.set_hidden = False
         self.parent_x = 200
         self.parent_y = 500
         self.parent_h = 600
@@ -204,28 +202,19 @@ class PapertapeReader():
             self.papertape_viewer.process_viewer(self.tape_loaded)
         self._update_file_status()
 
-        if self.set_hidden:
-            self._hide()
-            self.set_hidden = False
-        if self.set_visible:
-            self._show()
-            self.set_visible = False
-
     def active_status(self) -> bool:
         "Return true if papertape reader is active"
         return self.active
 
     def show(self, parent_x=100, parent_y=100, parent_h=500) -> None:
         "Show the papertape reader viewer"
+        if self.papertape_viewer is None:
+            return
+
         self.parent_x = parent_x
         self.parent_y = parent_y
         self.parent_h = parent_h
-        self.set_visible = True
 
-    def _show(self) -> None:
-        "Show the papertape reader viewer"
-        if self.papertape_viewer is None:
-            return
         if self.init_window_pos:
             # Set initial window position
             xoffset = 10  # pixels gap
@@ -237,15 +226,12 @@ class PapertapeReader():
             child_y = self.parent_y
             self.papertape_viewer.geometry(f"{child_w}x{child_h}+{child_x}+{child_y}")
             self.init_window_pos = False
+            self.papertape_viewer.transient(self.master)
 
         self.papertape_viewer.deiconify()
         self._update_file_status()
 
     def hide(self) -> None:
-        "Hide the papertape reader viewer"
-        self.set_hidden = True
-
-    def _hide(self) -> None:
         "Hide the papertape reader viewer"
         if self.papertape_viewer is None:
             return
@@ -359,8 +345,6 @@ class PapertapePunch():
         self.tape_file = None
         self.pt_name_path = config.get("initial_file_path", default=None)
         self.file_write_mode = config.get("mode", default="overwrite")
-        self.set_visible = config.get("visible", default=False)
-        self.set_hidden = False
         self.parent_x = 200
         self.parent_y = 200
         self.parent_h = 600
@@ -376,7 +360,7 @@ class PapertapePunch():
             x_org=100,
             y_org=100,
             height=100
-            )
+        )
 
         if self.papertape_viewer is None:
             raise RuntimeError("Could not create papertape reader viewer")
@@ -395,13 +379,6 @@ class PapertapePunch():
             self.papertape_viewer.process_viewer(self.tape_loaded)
         self._update_file_status()
 
-        if self.set_hidden:
-            self._hide()
-            self.set_hidden = False
-        if self.set_visible:
-            self._show()
-            self.set_visible = False
-
     def stop(self) -> None:
         "Shutdown the papertape punch viewer"
         self.unload_tape()
@@ -411,35 +388,31 @@ class PapertapePunch():
 
     def show(self, parent_x=100, parent_y=100, parent_h=500) -> None:
         "Show the papertape reader viewer"
-        self.parent_x = parent_x
-        self.parent_y = parent_y
-        self.parent_h = parent_h
-        self.set_visible = True
-
-    def _show(self) -> None:
-        "Show the papertape reader viewer"
         if self.papertape_viewer is None:
             return
 
+        self.parent_x = parent_x
+        self.parent_y = parent_y
+        self.parent_h = parent_h
+
         if self.init_window_pos:
             # Set initial window position
-            offset = 10  # pixels gap
+            xoffset = 10  # pixels gap
             child_w = self.papertape_viewer.winfo_width()  # keep current width
             child_h = self.parent_h // 2 # half the height of parent
             # Position at the bottom left of parent window
-            child_x = self.parent_x - child_w - offset
+            child_x = self.parent_x - child_w - xoffset
             child_x = max(10, child_x)
             child_y = self.parent_y
             self.papertape_viewer.geometry(f"{child_w}x{child_h}+{child_x}+{child_y}")
             self.init_window_pos = False
+            self.papertape_viewer.update_idletasks()
+            self.papertape_viewer.transient(self.master)
 
         self.papertape_viewer.deiconify()
+        self._update_file_status()
 
     def hide(self) -> None:
-        "Hide the papertape reader viewer"
-        self.set_hidden = True
-
-    def _hide(self) -> None:
         "Hide the papertape reader viewer"
         if self.papertape_viewer is None:
             return

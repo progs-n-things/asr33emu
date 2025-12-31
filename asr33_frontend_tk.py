@@ -66,15 +66,14 @@ def register_font(ttf_path: str) -> bool:
         res = ctypes.windll.gdi32.AddFontResourceExW(ttf_path, fr_private, 0)
         return res > 0
     elif sys.platform.startswith("linux"):
-        fonts_dir = pathlib.Path.home() / ".fonts"
+        fonts_dir = pathlib.Path.home() / ".local/share/fonts"
         fonts_dir.mkdir(parents=True, exist_ok=True)
         dest = fonts_dir / os.path.basename(ttf_path)
         try:
             if not dest.exists():
                 shutil.copy(ttf_path, dest)
                 subprocess.run(["fc-cache", "-fv"], check=True)
-                return True  # New font successfully registered
-            return False
+            return True
         except (FileNotFoundError, shutil.SameFileError,
                 PermissionError, subprocess.CalledProcessError) as e:
             print("Font registration failed:", e)
@@ -157,7 +156,7 @@ class ASR33TkFrontend:
         self.display_update_needed = False
 
         if not family_name:
-            family_name = "Courier New"  # fallback font
+            family_name = "DejaVu Sans Mono"  # fallback font
             print("Using fallback font:", family_name)
 
         self.tk_font = tkfont.Font(
@@ -361,7 +360,12 @@ class ASR33TkFrontend:
         self.root.bind("<Next>", self._page_down)
         self.root.bind("<Home>", self._page_home)
         self.root.bind("<End>", self._page_end)
+        # Cross-platform mouse wheel support:
+        # - Windows/macOS: Tk reports '<MouseWheel>' with event.delta
+        # - X11 (Linux): Tk reports Button-4 (wheel up) and Button-5 (wheel down)
         self.root.bind("<MouseWheel>", self._mouse_scroll)
+        self.root.bind("<Button-4>", self._mouse_scroll)
+        self.root.bind("<Button-5>", self._mouse_scroll)
         # Initial draw + periodic update
         self._update_display()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -640,11 +644,26 @@ class ASR33TkFrontend:
         return
 
     def _mouse_scroll(self, event):
-        """Handle mouse wheel scrolling."""
-        if event.delta > 0:  # wheel up
-            self._scroll_helper(-MOUSE_SCROLL_STEP)
-        else:  # wheel down
-            self._scroll_helper(MOUSE_SCROLL_STEP)
+        """Handle mouse wheel scrolling (cross-platform).
+
+        Accept both X11 Button-4/5 events (event.num) and
+        Windows/macOS '<MouseWheel>' events (event.delta).
+        """
+        # X11 mouse wheel: event.num == 4 (up), 5 (down)
+        num = getattr(event, 'num', None)
+        if num is not None:
+            if num == 4:
+                self._scroll_helper(-MOUSE_SCROLL_STEP)
+            elif num == 5:
+                self._scroll_helper(MOUSE_SCROLL_STEP)
+        else:
+            # Windows / macOS: event.delta > 0 => up
+            delta = getattr(event, 'delta', 0)
+            if delta > 0:
+                self._scroll_helper(-MOUSE_SCROLL_STEP)
+            else:
+                self._scroll_helper(MOUSE_SCROLL_STEP)
+
         self.display_update_needed = True
 
     def _on_scrollbar(self, *args):

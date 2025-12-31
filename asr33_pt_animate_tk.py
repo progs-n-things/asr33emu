@@ -297,8 +297,12 @@ class PapertapeViewer(tk.Toplevel):
         self.tape_canvas.pack(side="left", fill="both", expand=True)
         self.tape_canvas.configure(yscrollcommand=self.scrollbar.set)
 
-        # Bind mouse wheel and keys for scrolling
+        # Bind mouse wheel and keys for scrolling (cross-platform)
+        # - Windows/macOS: '<MouseWheel>' with event.delta
+        # - X11 (Linux): '<Button-4>' (wheel up) and '<Button-5>' (wheel down)
         self.tape_canvas.bind("<MouseWheel>", self._mousewheel_handler)
+        self.tape_canvas.bind("<Button-4>", self._mousewheel_handler)
+        self.tape_canvas.bind("<Button-5>", self._mousewheel_handler)
         self.bind("<Home>", lambda e: self.tape_canvas.yview_moveto(0))
         self.bind("<End>", lambda e: self.tape_canvas.yview_moveto(1))
         self.bind("<Next>", lambda e: self.tape_canvas.yview_scroll(1, "pages"))
@@ -311,7 +315,6 @@ class PapertapeViewer(tk.Toplevel):
         else:
             self.bind("<KeyPress-3>", lambda e: self.on_button_click())
             self.bind("<KeyPress-4>", lambda e: self.off_button_click())
-
 
     def _draw_bit_numbers(self) -> None:
         """Draws the fixed bit numbers (0-7) and ASCII/HEX header text."""
@@ -361,8 +364,24 @@ class PapertapeViewer(tk.Toplevel):
                 self._draw_row(byte, y, row_tag)
 
     def _mousewheel_handler(self, event) -> None:
-        """Handle mouse wheel scrolling."""
-        direction = -1 if event.delta > 0 else 1
+        """Handle mouse wheel scrolling (cross-platform).
+
+        Accept both X11 Button-4/5 events (event.num) and
+        Windows/macOS '<MouseWheel>' events (event.delta).
+        """
+        num = getattr(event, 'num', None)
+        if num is not None:
+            # X11: Button-4 = wheel up, Button-5 = wheel down
+            if num == 4:
+                direction = -1
+            elif num == 5:
+                direction = 1
+            else:
+                return
+        else:
+            delta = getattr(event, 'delta', 0)
+            direction = -1 if delta > 0 else 1
+
         self.tape_canvas.scan_mark(0, 0)
         self.tape_canvas.scan_dragto(0, int(direction * self.hole_pitch_pix_y), gain=1)
 
