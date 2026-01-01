@@ -370,17 +370,15 @@ class PapertapeViewer(tk.Toplevel):
         Windows/macOS '<MouseWheel>' events (event.delta).
         """
         num = getattr(event, 'num', None)
-        if num is not None:
+        if num is not None and num in (4, 5):
             # X11: Button-4 = wheel up, Button-5 = wheel down
             if num == 4:
-                direction = -1
-            elif num == 5:
                 direction = 1
-            else:
-                return
+            elif num == 5:
+                direction = -1
         else:
             delta = getattr(event, 'delta', 0)
-            direction = -1 if delta > 0 else 1
+            direction = 1 if delta > 0 else -1
 
         self.tape_canvas.scan_mark(0, 0)
         self.tape_canvas.scan_dragto(0, int(direction * self.hole_pitch_pix_y), gain=1)

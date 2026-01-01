@@ -651,7 +651,7 @@ class ASR33TkFrontend:
         """
         # X11 mouse wheel: event.num == 4 (up), 5 (down)
         num = getattr(event, 'num', None)
-        if num is not None:
+        if num is not None and num in (4, 5):
             if num == 4:
                 self._scroll_helper(-MOUSE_SCROLL_STEP)
             elif num == 5:
