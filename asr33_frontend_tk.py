@@ -8,6 +8,7 @@ ASR-33 Frontend using Tkinter (Canvas text renderer with overstrike support).
 - Much faster than PIL-based rendering.
 """
 
+import threading
 import tkinter as tk
 from tkinter import ttk
 from tkinter import font as tkfont
@@ -237,7 +238,7 @@ class ASR33TkFrontend:
             self.status_area.grid_columnconfigure(i, weight=1)
 
         self._data_rate_status_bar, self._data_rate_status_label, self._data_rate_status_button = (
-            self.create_status_bar(
+            self._create_status_bar(
                 parent_frame=self.status_area,
                 status_text=f"Data Rate: {self._data_rate.capitalize()}",
                 status_text_width=21,
@@ -248,7 +249,7 @@ class ASR33TkFrontend:
         self._data_rate_status_bar.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
 
         self._mute_status_bar, self._mute_status_label, self._mute_status_button = (
-            self.create_status_bar(
+            self._create_status_bar(
                 parent_frame=self.status_area,
                 status_text=f"Sound: {self._sound_mute_state.capitalize()}",
                 status_text_width=15,
@@ -259,7 +260,7 @@ class ASR33TkFrontend:
         self._mute_status_bar.grid(row=0, column=1, sticky="nsew", padx=2, pady=2)
 
         self._lid_status_bar, self._lid_status_label, self._lid_status_button = (
-            self.create_status_bar(
+            self._create_status_bar(
                 parent_frame=self.status_area,
                 status_text=f"Lid: {self._lid_state.capitalize()}",
                 status_text_width=10,
@@ -270,7 +271,7 @@ class ASR33TkFrontend:
         self._lid_status_bar.grid(row=0, column=2, sticky="nsew", padx=(5, 2), pady=2)
 
         self._loopback_status_bar, self._loopback_status_label, self._loopback_status_button = (
-            self.create_status_bar(
+            self._create_status_bar(
                 parent_frame=self.status_area,
                 status_text=f"Comm Status: {self._loopback_state.capitalize()}",
                 status_text_width=20,
@@ -282,7 +283,7 @@ class ASR33TkFrontend:
         self.status_area.update_idletasks()  # ensure correct height measurement
 
         self._printer_status_bar, self._printer_status_label, self._printer_status_button = (
-            self.create_status_bar(
+            self._create_status_bar(
                 parent_frame=self.status_area,
                 status_text=f"Printer: {self._printer_state.capitalize()}",
                 status_text_width=12,
@@ -373,7 +374,7 @@ class ASR33TkFrontend:
         if self.send_cr_at_startup:
             self._backend.send_data(b'\r') # send CR to wake up host
 
-    def create_status_bar(
+    def _create_status_bar(
             self,
             parent_frame,
             status_text,
@@ -856,14 +857,15 @@ class ASR33TkFrontend:
         else:
             self.status.lower()  # hide
 
-
     def _periodic_tasks(self):
         """Periodic tasks: request data, update display if needed."""
         # Schedule the actual work to run when Tk is idle
         def work():
-            if self.display_update_needed:
-                self._update_display()
-                self.display_update_needed = False
+            lock = threading.Lock()
+            with lock:
+                if self.display_update_needed:
+                    self.display_update_needed = False
+                    self._update_display()
 
             # play sounds for new characters
             while self._term.sound_queue_len() > 0:
@@ -901,7 +903,6 @@ class ASR33TkFrontend:
 
     def run(self):
         """Run the Tkinter main loop."""
-
         # Initial sound, backend and printer state management
         self._sound_manage_lid()
         self._sound_manage_mute()
