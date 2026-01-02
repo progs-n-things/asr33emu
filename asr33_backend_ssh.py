@@ -30,7 +30,7 @@ class SSHV2Backend:
         self.username = config.get("username", default="user")
         self.port = config.get("port", default=22)
         self.expected_fingerprint = config.get("expected_fingerprint", default=None)
-        self.key_filename = config.get("key_filename", default=None)  #Todo: implement key file usage
+        self.key_filename = config.get("key_filename", default=None)
         self.password = config.get("password", default=None)   # optional, can be None
 
         self._running = True
@@ -65,17 +65,33 @@ class SSHV2Backend:
 
         try:
             ch = data.decode("ascii", "ignore")
-            if ch in ("\r", "\n"):
-                # End of line: push buffer into queue
-                self._input_queue.put(self._buffer)
-                self._buffer = ""
-            else:
-                self._buffer += ch
-        except (AttributeError, TypeError, UnicodeDecodeError, queue.Full):
-            pass
+            # Process each character but do NOT echo character count while
+            # waiting for password. Only echo the final newline when entered.
+            masked_out = None
+            for c in ch:
+                if c in ("\r", "\n"):
+                    try:
+                        self._input_queue.put(self._buffer)
+                    except queue.Full:
+                        pass
+                    self._buffer = ""
+                    if self._waiting_for_password:
+                        masked_out = b"\r\n"
+                elif c in ("\x08", "\b", "\x7f"):
+                    # Backspace / delete: remove last character if present
+                    if self._buffer:
+                        self._buffer = self._buffer[:-1]
+                else:
+                    self._buffer += c
+        except (AttributeError, TypeError, UnicodeDecodeError):
+            masked_out = None
 
-        # Only echo if not waiting for password
-        if not self._waiting_for_password:
+        # Echo: if waiting for password, suppress per-character echoes and
+        # only send newline on Enter; otherwise send raw data
+        if self._waiting_for_password:
+            if masked_out:
+                self.upper_layer.receive_data(masked_out)
+        else:
             self.upper_layer.receive_data(data)
 
     def keyboard_interactive_handler(self, title, instructions, prompt_list):
@@ -88,8 +104,16 @@ class SSHV2Backend:
 
         for prompt, _ in prompt_list:
             self.upper_layer.receive_data((prompt + "\r\n").encode("ascii", "ignore"))
-            response = self._input_queue.get(block=True)
-            responses.append(response)
+            # Wait for user input but remain interruptible so shutdown can occur
+            while self._running:
+                try:
+                    response = self._input_queue.get(timeout=0.1)
+                    responses.append(response)
+                    break
+                except queue.Empty:
+                    continue
+            else:
+                raise SSHException("Shutdown while waiting for keyboard-interactive input")
         return responses
 
     def load_known_hosts(self):
@@ -134,6 +158,7 @@ class SSHV2Backend:
 
     def ssh_thread(self) -> None:
         """Background thread: manage SSH connection and data transfer."""
+        time.sleep(1)  # brief delay to allow frontend to initialize
         try:
             sock = socket.create_connection((self.host, self.port), timeout=10)
             self.transport = paramiko.Transport(sock)
@@ -166,10 +191,22 @@ class SSHV2Backend:
                     prompt = f"Password for {self.username}@{self.host} on port {self.port}: "
                     self.upper_layer.receive_data(prompt.encode("ascii", "ignore"))
                     self._waiting_for_password = True
-                    self.password = self._input_queue.get(block=True)
-                    self._waiting_for_password = False
+                    try:
+                        # Wait for password input but allow shutdown to interrupt
+                        while self._running:
+                            try:
+                                self.password = self._input_queue.get(timeout=0.1)
+                                break
+                            except queue.Empty:
+                                continue
+                        if not self._running:
+                            return
+                    finally:
+                        self._waiting_for_password = False
                     self.upper_layer.receive_data(b"\r\n")  # Echo newline after password input
                 try:
+                    if self.password is None:
+                        raise SSHException("No password provided for auth_password")
                     self.transport.auth_password(self.username, self.password)
                 except (AuthenticationException, SSHException) as e:
                     self.upper_layer.receive_data(

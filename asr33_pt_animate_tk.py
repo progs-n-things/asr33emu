@@ -370,6 +370,7 @@ class PapertapeViewer(tk.Toplevel):
         Windows/macOS '<MouseWheel>' events (event.delta).
         """
         num = getattr(event, 'num', None)
+        direction = 0
         if num is not None and num in (4, 5):
             # X11: Button-4 = wheel up, Button-5 = wheel down
             if num == 4:

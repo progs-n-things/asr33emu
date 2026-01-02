@@ -924,6 +924,7 @@ class ASR33TkFrontend:
             self._sounds.start()
 
         if self.root is not None:
+            self.root.focus_force()
             self.root.after(20, self._periodic_tasks)
             self.root.mainloop()
 
