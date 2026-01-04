@@ -7,10 +7,11 @@ from tkinter import ttk
 from tkinter import font as tkfont
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
-# --- Configuration Constants (Pylint compliant) ---
+# --- Default Configuration Constants ---
 PAPER_COLOR = "#ffeedd"
 UNPUNCHED_GHOST_OUTLINE = True
-ASCII_CHAR_DISPLAY_MASK_BIT8 = True
+ASCII_CHAR_MASK_MSB = True
+BIT_LABEL_BASE = 0  # 0: zero-based (0-7), 1: one-based (1-8)
 MAX_LABEL_WIDTH = 20  # Maximum width for status labels
 
 class PapertapeViewer(tk.Toplevel):
@@ -45,6 +46,15 @@ class PapertapeViewer(tk.Toplevel):
         self.mirrored = False
         self.autostop = config.get("auto_stop", default=False)
         self.cb_autostop = tk.IntVar(value=self.autostop)
+        self.unpunched_ghost_outline = config.get(
+            "ghost_outline",
+            default=UNPUNCHED_GHOST_OUTLINE
+        )
+        self.bit_label_base = config.get("bit_label_base", default=BIT_LABEL_BASE)
+        self.ascii_char_mask_msb = config.get(
+            "ascii_char_mask_msb",
+            default=ASCII_CHAR_MASK_MSB
+        )
 
         # geometry
         self.scale = scale
@@ -322,9 +332,15 @@ class PapertapeViewer(tk.Toplevel):
         # Center Y for the row of numbers, adjusted slightly lower to clear the top margin
         center_y_bit_num = int(self.hole_pitch_pix_y / 2)
         if self.mirrored:
-            header_labels = [8, 7, 6, 5, 4, "S", 3, 2, 1]
+            if self.bit_label_base == 0:
+                header_labels = [7, 6, 5, 4, 3, "S", 2, 1, 0]
+            else:
+                header_labels = [8, 7, 6, 5, 4, "S", 3, 2, 1]
         else:
-            header_labels = [1, 2, 3, "S", 4, 5, 6, 7, 8]
+            if self.bit_label_base == 0:
+                header_labels = [0, 1, 2, "S", 3, 4, 5, 6, 7]
+            else:
+                header_labels = [1, 2, 3, "S", 4, 5, 6, 7, 8]
         # Draw the bits-label header
         for i, label in enumerate(header_labels):
             center_x = self.tape_canvas_margin_pix + self.cols_x[i] - 1
@@ -541,6 +557,7 @@ class PapertapeViewer(tk.Toplevel):
         self.rows.clear()
         self._canvas_configure(0)
         self._update_tape_outline()
+        self.set_button_state("unload")
 
     def set_to_off_state(self) -> None:
         """Sets a flag to safely request the viewer to stop reading/punching."""
@@ -597,7 +614,7 @@ class PapertapeViewer(tk.Toplevel):
         img = Image.new("RGBA", (row_w, row_h), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
 
-        ghost_outline = "#d0d0d0"
+        ghost_outline = "#c0c0c0"
         punch_fill = "#3b3b3b"
         punch_outline = "#aaaaaa"
 
@@ -615,7 +632,7 @@ class PapertapeViewer(tk.Toplevel):
             x = int(self.cols_x[col_index])
             r = int(self.bit_radius_pix)
 
-            if UNPUNCHED_GHOST_OUTLINE or ((byte >> bit) & 1):
+            if self.unpunched_ghost_outline or ((byte >> bit) & 1):
                 draw.ellipse((x - r, y - r, x + r, y + r), outline=ghost_outline, width=1)
             if (byte >> bit) & 1:
                 draw.ellipse(
@@ -627,7 +644,7 @@ class PapertapeViewer(tk.Toplevel):
 
         # 3. ASCII glyph (rotated)
         chrval = byte
-        if ASCII_CHAR_DISPLAY_MASK_BIT8:
+        if self.ascii_char_mask_msb:
             chrval &= 0x7F
         ch = chr(chrval) if 32 <= chrval < 127 else "·"
         glyph_img = Image.new("RGBA", (row_h, row_h), (0, 0, 0, 0))

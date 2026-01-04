@@ -11,15 +11,17 @@ from typing import BinaryIO
 from tkinter import filedialog
 from asr33_pt_animate_tk import PapertapeViewer
 
+# Default configuration constants
+
 # if True, the tape reader will automatically skip past all leading
 # 000 bytes at the start of the tape when the reader is turned on.
 READER_AUTO_SKIP_LEADING_NULLS = True
 
-# if True, sets bit 7 on all bytes read from tape. This is useful
+# if True, sets msb to 1 on all bytes read from tape. This is useful
 # If you created an ASCII tape file with an editor on a modern system
 # for use on systems that expect 7-bit ASCII with mark parity like some
 # versions of OS/8. This is also useful when creating FOCAL-69 source tapes.
-READER_SET_BIT_7 = False
+READER_SET_MSB = False
 
 class HexViewer:
     "Hex dumper front-end component (streaming one byte at a time)"
@@ -56,7 +58,8 @@ class PapertapeReader():
         self.init_window_pos = True
         self.active = False  # initially stopped
         self.stop_cause = ""
-        self.pt_name_path = config.get("initial_file_path", default=None)
+        self.pt_name_path = None
+        self.init_name_path = config.get("initial_file_path", default=None)
         self.tape_data = b''
         self.position = 0
         self.trailing_o000_idx = None
@@ -64,6 +67,10 @@ class PapertapeReader():
         self.skip_leading_nulls = config.get(
             "skip_leading_nulls",
             default=READER_AUTO_SKIP_LEADING_NULLS
+        )
+        self.set_msb = config.get(
+            "set_msb",
+            default=READER_SET_MSB
         )
         self.parent_x = 200
         self.parent_y = 500
@@ -145,8 +152,8 @@ class PapertapeReader():
                     continue
 
                 data_byte = bytes(self.tape_data[self.position:self.position+1])
-                if READER_SET_BIT_7:
-                    data_byte = bytes([data_byte[0] | 0x80])  # set bit 7
+                if self.set_msb:
+                    data_byte = bytes([data_byte[0] | 0x80])  # set msb
 
                 # Send 8-bit byte directly to backend for transmission
                 if self.backend is not None:
@@ -186,7 +193,6 @@ class PapertapeReader():
             self.position = 0
             self.tape_loaded = True
             self.active = False  # initially stopped
-
 
     def stop(self) -> None:
         "Shutdown the papertape reader viewer"
@@ -274,11 +280,14 @@ class PapertapeReader():
         "Load a tape file"
         if self.papertape_viewer is None:
             return "error"
+
         if self.active:
             self.stop()  # if active, turn off reader
         saved_active = self.active
-        initial_dir = os.path.dirname(self.pt_name_path) if self.pt_name_path else "."
+
+        initial_dir = os.path.dirname(self.init_name_path) if self.init_name_path else "."
         name_path = get_reader_file_selection(self.papertape_viewer, initial_dir=initial_dir)
+
         if name_path is None:
             self.active = saved_active
             return "cancelled"
@@ -289,6 +298,7 @@ class PapertapeReader():
             self.active = saved_active
             return "error"
         self.pt_name_path = name_path
+        self.init_name_path = name_path
         self._update_file_status()
         return "loaded"
 
@@ -343,7 +353,8 @@ class PapertapePunch():
         self.init_window_pos = True
         self.active = False  # initially stopped
         self.tape_file = None
-        self.pt_name_path = config.get("initial_file_path", default=None)
+        self.pt_name_path = None
+        self.init_name_path = config.get("initial_file_path", default=None)
         self.file_write_mode = config.get("mode", default="overwrite")
         self.parent_x = 200
         self.parent_y = 200
@@ -452,8 +463,9 @@ class PapertapePunch():
         if self.tape_file is not None:
             self.tape_file.close()
 
-        initial_dir = os.path.dirname(self.pt_name_path) if self.pt_name_path else "."
-        name_path = get_punch_file_selection(self.papertape_viewer, initial_dir=initial_dir)
+        initial_dir = os.path.dirname(self.init_name_path) if self.init_name_path else "."
+        name_path = get_reader_file_selection(self.papertape_viewer, initial_dir=initial_dir)
+
         if name_path is None:
             return "canceled"
         try:
@@ -470,6 +482,7 @@ class PapertapePunch():
             return "error"
 
         self.pt_name_path = name_path
+        self.init_name_path = name_path
         self.tape_loaded = True
         self.active = False  # initially stopped
         self._update_file_status()

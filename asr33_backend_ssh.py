@@ -304,12 +304,13 @@ class SSHV2Backend:
                     try:
                         self.save_known_host(self.host, self.port, server_key, primary_user_file)
                         self.upper_layer.receive_data(
-                            f"Warning: Permanently added '{self.host}' to known_hosts.\r\n".encode("ascii", "ignore")
+                            f"Warning: Permanently added '{self.host}' "
+                            f"to known_hosts.\r\n".encode("ascii", "ignore")
                         )
                     except OSError:
                         # If we can't write, still allow connection
                         self.upper_layer.receive_data(
-                            f"Warning: Could not write to known_hosts.\r\n".encode("ascii", "ignore")
+                            "Warning: Could not write to known_hosts.\r\n".encode("ascii", "ignore")
                         )
                 return
 
@@ -455,6 +456,7 @@ class SSHV2Backend:
         self.upper_layer.receive_data(warning.encode("ascii", "ignore"))
 
         # Wait for user input
+        response = ""
         while self._running:
             try:
                 response = self._input_queue.get(timeout=0.1).strip().lower()

@@ -19,6 +19,8 @@ terminal:
     keyboard_parity_mode: "mark"  # Options: "mark" | "space" | "even"
     send_cr_at_startup: false  # Send carriage return on startup
     no_print: false  # Options: true | false (disable printing to console)
+    font_path: null  # Path to custom TrueType font file (optional; null means use default)
+    font_size: 20  # Font size for terminal display
 
 backend:
   type: "serial"  # "serial" | "ssh"
@@ -56,13 +58,21 @@ data_throttle:
 
 tape_reader:
   config:
-    max_rows: 200  # Maximum number of rows to display in tape reader UI
+    max_rows: 200  # Maximum number of rows to display in tape UI
     initial_file_path: "."  # Initial path to tape file
     skip_leading_nulls: true  # Skip past leading nulls when reading
     auto_stop: true  # Stop reading automatically after first 200 octal or null trailer code
+    set_msb: false  # True to set msb of character to 1 when reading from tape
+    ghost_outline: true  # True to display ghost outline for unpunched holes
+    bit_label_base: 1  # Options: 0: (0-7) | 1: (1-8)
+    ascii_char_mask_msb: true  # True to mask msb when displaying ASCII character on tape UI
 
 tape_punch:
   config:
-    max_rows: 200  # Maximum number of rows to display in tape punch UI
+    max_rows: 200  # Maximum number of rows to display in tape UI
     initial_file_path: "."  # Initial path to tape file
     mode: "overwrite"  # Options: "append" | "overwrite"
+    ghost_outline: true  # True to display ghost outline for unpunched holes
+    bit_label_base: 1  # Options: 0: (0-7) | 1: (1-8)
+    ascii_char_mask_msb: true  # True to mask msb when displaying ASCII character on tape UI
+

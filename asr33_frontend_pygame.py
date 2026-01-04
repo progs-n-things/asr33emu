@@ -39,6 +39,8 @@ from asr33_terminal import Terminal
 from asr33_sounds_sm import ASR33AudioModule as ASR33_Sounds
 from asr33_papertape import PapertapeReader, PapertapePunch
 
+# Default terminal constants
+
 # True for true ASR-33 emulation.
 # False if you want to allow lowercase input from keyboard.
 KEYBOARD_UPPERCASE_ONLY = False
@@ -61,8 +63,9 @@ MOUSE_SCROLL_STEP = 3
 BG_COLOR = (0xff, 0xee, 0xdd)
 TEXT_COLOR = (0x33, 0x33, 0x33)
 
-FONT_PATH = "Teletype33.ttf"
-FONT_SIZE = 24
+# Default font settings
+DEFAULT_FONT_PATH = "Teletype33.ttf"
+DEFAULT_FONT_SIZE = 20
 
 
 class ASR33PygameFrontend:
@@ -90,6 +93,16 @@ class ASR33PygameFrontend:
             "send_cr_at_startup",
             default=SEND_CR_AT_STARTUP)
 
+        self.font_path = self.cfg.terminal.config.get(
+            "font_path",
+            default=None)
+        if self.font_path is None:
+            self.font_path = DEFAULT_FONT_PATH
+
+        font_scale = 1.4 # scale factor to match Tkinter font size
+        self.font_size = int(font_scale*self.cfg.terminal.config.get(
+            "font_size",
+            default=DEFAULT_FONT_SIZE))
 
         pygame.init()
 
@@ -111,7 +124,7 @@ class ASR33PygameFrontend:
             config=self.cfg.tape_reader.config
         )
 
-        self.font = pygame.font.Font(FONT_PATH, FONT_SIZE)
+        self.font = pygame.font.Font(self.font_path, self.font_size)
         self.text_color = TEXT_COLOR
 
         # Character dimensions
@@ -449,7 +462,7 @@ class ASR33PygameFrontend:
 
         # --- Status overlay ---
         if self.screen_top_lln is not None and len(self._term.line_history) > self._term.height:
-            overlay_font = pygame.font.Font(FONT_PATH, 14)
+            overlay_font = pygame.font.Font(self.font_path, self.font_size-4)
             if self.screen_top_lln == self._term.line_history.top_lln():
                 text_surface = overlay_font.render("VIEWING HISTORY: TOP", True, (255, 255, 255))
             else:

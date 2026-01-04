@@ -29,6 +29,7 @@ from asr33_shim_throttle import DataThrottle
 from asr33_sounds_sm import ASR33AudioModule as ASR33_Sounds
 from asr33_papertape import PapertapeReader, PapertapePunch
 
+# Default constants
 # True for true ASR-33 emulation.
 # False if you want to allow lowercase input from keyboard.
 KEYBOARD_UPPERCASE_ONLY = False
@@ -50,14 +51,9 @@ MOUSE_SCROLL_STEP = 3
 TEXT_COLOR = "#555555"
 PAPER_COLOR = "#ffeedd"
 
-FONT_PATH = "Teletype33.ttf"
-FONT_SIZE = 20
-
-# Maximum characters per second when pasting from clipboard. Set to 0 for unlimited.
-PASTE_MAX_CPS = 300
-# Tick interval (ms) used to drain the paste queue.
-PASTE_TICK_MS = 5
-
+# Default font settings
+DEFAULT_FONT_PATH = "Teletype33.ttf"
+DEFAULT_FONT_SIZE = 20
 
 # Cross-platform font registration
 def register_font(ttf_path: str) -> bool:
@@ -139,17 +135,27 @@ class ASR33TkFrontend:
             "send_cr_at_startup",
             default=SEND_CR_AT_STARTUP)
 
+        self.font_path = self.cfg.terminal.config.get(
+            "font_path",
+            default=None)
+        if self.font_path is None:
+            self.font_path = DEFAULT_FONT_PATH
+
+        self.font_size = self.cfg.terminal.config.get(
+            "font_size",
+            default=DEFAULT_FONT_SIZE)
+
         # Register font before creating Tk root
-        family_name = get_ttf_family_name(FONT_PATH)
+        family_name = get_ttf_family_name(self.font_path)
         if family_name:
-            if register_font(FONT_PATH):
+            if register_font(self.font_path):
                 pass
 #                print("Registered font family:", family_name)
             else:
                 print("Warning: Unable to register font: ", family_name)
                 family_name = ""
         else:
-            print("Warning: font not found:", FONT_PATH)
+            print("Warning: font not found:", self.font_path)
 
         self.root = tk.Tk()
         self.root.resizable(False, False)
@@ -157,19 +163,25 @@ class ASR33TkFrontend:
         self.display_update_needed = False
 
         if not family_name:
-            family_name = "DejaVu Sans Mono"  # fallback font
+            family_name = "Courier"  # fallback font
             print("Using fallback font:", family_name)
 
         self.tk_font = tkfont.Font(
             family=family_name,
-            size=FONT_SIZE,
+            size= self.font_size,
             weight="normal",
             slant="roman"
         )
 
         actual = self.tk_font.actual()
         if actual["family"] != family_name:
-            raise RuntimeError("ERROR: Could not load font family:", family_name)
+            print(
+                f"Warning: Requested font family '{family_name}' not available; "
+                f"using '{actual['family']}' instead."
+            )
+            # Use the actual family that Tk resolved so subsequent measurements
+            # and derived fonts remain consistent.
+            family_name = actual["family"]
 
         self.tape_running_state = False
         self.papertape_reader = PapertapeReader(
@@ -227,7 +239,7 @@ class ASR33TkFrontend:
         # a Font instance with a size (which static type checkers reject).
         self.status_bar_font = tkfont.Font(
             family=self.status_font.actual().get("family", "New Courier"),
-            size=int(FONT_SIZE * 0.55),
+            size=int( self.font_size * 0.55),
             weight=self.status_font.actual().get("weight", "bold"),
             slant=self.status_font.actual().get("slant", "roman")
         )
