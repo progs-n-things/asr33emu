@@ -12,7 +12,7 @@
 * F3/F4 displays/hides the paper tape punch.
 * By default, output is limited to an authentic 10 characters per second. Hit F5 to unthrottle the speed.
 * Hit F6 to mute the sound.
-* Sound is generated using Hugh Pyle's ASR-33 sound recording and Pygame mixer. The sound module Sound now works with both Tkinter and Pygame frontends. If it's too loud, hit F7 to close the lid.
+* Sound is generated using Hugh Pyle's ASR-33 sound recording and Pygame mixer. The sound module, asr33_sounds_sm.py, now works with both Tkinter and Pygame frontends. If it's too loud, hit F7 to close the lid.
 * Hit F8 to switch between Line and Local modes.
 * Hit F9 to turn the printer output on and off.
 * Scrolling (with page up, down, home, end, mouse scroll - Tkinter frontend has a scrollbar)
@@ -67,4 +67,5 @@ For most PDP8 communications you will also want keyboard_uppercase_only set to "
 I find it quite convenient to load both the RIM and Binary loaders in the same PiDP8 start up configuration file. I use "1.script" for this purpose. If you're looking for a more realistic experience, you can use the front panel to load the RIM loader and asr33emu's simulated paper tape reader to load the binary loader and the front panel to start it running.<br>
 
 The self-starting EDU20C BASIC paper tape loads and runs fine using asr33emu. It requires only the RIM loader to load and at 10 characters per second, it takes about 25 minutes to load and start. If you're impatient, you can turn off the data rate throttle in the emulator, and it will load in a few minutes at a rate of about 300 CPS. ASR-33 teletypes connected to PDP8's typically had a hardware tape-reader auto-start/stop feature. This feature cannot be easily simulated, but an auto-stop has been added to the reader. It works by detecting trailing 200 octal or null characters. If auto-stop is not enabled, when EDU20C BASIC auto-starts, the tape reader will feed trailer bytes to its startup dialog resulting in garbage being entered at the setup prompts.<br>
+
 
