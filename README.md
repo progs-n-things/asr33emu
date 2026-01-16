@@ -4,7 +4,7 @@
 
 **Features:**
 
-* Refactored and expanded (with the help of AI) version of Hugh Pyle's ttyemy project
+* Refactored and expanded (with the help of AI) version of Hugh Pyle's ttyemu project
 * Supports Pygame and Tkinter frontends.
 * Backends for serial and ssh (Paramiko library)
     Ssh has not been well tested, so use with caution.
@@ -67,3 +67,4 @@ For most PDP8 communications you will also want keyboard_uppercase_only set to "
 I find it quite convenient to load both the RIM and Binary loaders in the same PiDP8 start up configuration file. I use "1.script" for this purpose. If you're looking for a more realistic experience, you can use the front panel to load the RIM loader and asr33emu's simulated paper tape reader to load the binary loader and the front panel to start it running.<br>
 
 The self-starting EDU20C BASIC paper tape loads and runs fine using asr33emu. It requires only the RIM loader to load and at 10 characters per second, it takes about 25 minutes to load and start. If you're impatient, you can turn off the data rate throttle in the emulator, and it will load in a few minutes at a rate of about 300 CPS. ASR-33 teletypes connected to PDP8's typically had a hardware tape-reader auto-start/stop feature. This feature cannot be easily simulated, but an auto-stop has been added to the reader. It works by detecting trailing 200 octal or null characters. If auto-stop is not enabled, when EDU20C BASIC auto-starts, the tape reader will feed trailer bytes to its startup dialog resulting in garbage being entered at the setup prompts.<br>
+
